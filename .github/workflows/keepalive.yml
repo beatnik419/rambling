@@ -1,0 +1,27 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping works table (generates DB activity)
+        run: |
+          echo "Pinging $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          STATUS=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+            --max-time 20 \
+            -H "apikey: ${{ secrets.SUPA_URL_ANON }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPA_URL_ANON }}" \
+            "${{ secrets.SUPA_URL }}/rest/v1/works?select=id&limit=1")
+          echo "HTTP status: $STATUS"
+          echo "Response: $(cat /tmp/resp.json)"
+          if [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
+            echo "::error::Keep-alive ping failed with HTTP $STATUS"
+            exit 1
+          fi
+          echo "Keep-alive OK — database activity registered."
